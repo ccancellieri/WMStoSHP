@@ -1,18 +1,35 @@
 #!/bin/sh
 
+##set -x
+
 if [ $1 == "-h" ]; then
-  echo $0 LAYERNAME BBOX OUTPUT_FILE_NAME
+  echo $0 LAYERNAME OUTPUT_FILE_NAME
   exit 0
-elif [ $# -lt 3 ]; then
+elif [ $# -lt 2 ]; then
   echo "Missing params (use -h)"
   exit -1
 fi
 
 layername=$1
-bbox=$2
-out=$3
+out=$2
+_comma="%2C"
+_semi=":"
 
-srs=EPSG%3A4326
+bbox=$minx:$miny:$maxx:$maxy
+if [ -n "$CRS" ]; then
+  srs=$CRS
+else
+  srs="EPSG"$_semi"4326"
+  echo "unable to find defined SRS variable CRS=\"EPSG:XXX\" using defaults ($srs)"
+fi
+
+if [ \( -n "$minx" \) -a \( -n "$miny" \) -a \( -n "$maxx" \) -a \( -n "$maxy" \) ]; then
+  bbox="$minx$_comma$miny$_comma$maxx$_comma$maxy"
+else
+  bbox="-180"$_comma"-90"$_comma"180"$_comma"90"
+  echo "unable to find defined bbox variables minx=\"xxx\" miny=\"xxx\" maxx=\"xxx\" maxy=\"xxx\" using defaults ($bbox)"
+fi
+
 url=http://localhost:8080/geoserver/wms
 
 ## Request (WMS -> MBTiles)
@@ -23,15 +40,23 @@ MIN_ZOOM=14
 TIMEOUT=36000
 TILESET_NAME=$out
 
-curl "$url?service=WMS&version=1.1.0&request=GetMap&layers=$layername&bbox=$bbox&width=768&height=451&srs=$srs&format=mbtiles&transparency=true&bgColor=0xFFFFFF&format_options=max_zoom:$MAX_ZOOM;min_zoom:$MIN_ZOOM;tileset_name:$TILESET_NAME;" --max-time $TIMEOUT -o $out.mbtiles
+curl "$url?service=WMS&version=1.1.0&request=GetMap&tiled=true&layers=$layername&bbox=$bbox&width=768&height=451&srs=$srs&format=mbtiles&transparency=true&bgColor=0xFFFFFF&format_options=max_zoom:$MAX_ZOOM;min_zoom:$MIN_ZOOM;tileset_name:$TILESET_NAME;" --max-time $TIMEOUT -o $out.mbtiles
 
 if [ $? -eq 0 ]; then
+  # sometimes geoserver returns 200 but the content is still wrong
   if [ -f wms ]; then
-	cat wms;
-        rm wms;
-        exit 1
-  fi
-  echo "$out.mbtiles fetched!"
+    cat wms;
+    rm wms;
+    exit 1
+  elif [ -n "`file $out.mbtiles | grep SQLite`" ]; then
+      # all checks passed!
+      echo "$out.mbtiles fetched!"
+  else
+    # ! mbtiles format file recognized
+    cat $out.mbtiles;
+    rm $out.mbtiles;
+    exit 1
+  fi 
 else
   echo "Failed to fetch $out.mbtiles"
   exit 1
