@@ -13,14 +13,13 @@ fi
 layername=$1
 out=$2
 _comma="%2C"
-_semi=":"
+_semi="%3A"
 
-bbox=$minx:$miny:$maxx:$maxy
 if [ -n "$CRS" ]; then
   srs=$CRS
 else
   srs="EPSG"$_semi"4326"
-  echo "unable to find defined SRS variable CRS=\"EPSG:XXX\" using defaults ($srs)"
+  echo "unable to find defined SRS variable CRS=\"EPSG:XXX\" using default ($srs)"
 fi
 
 if [ \( -n "$minx" \) -a \( -n "$miny" \) -a \( -n "$maxx" \) -a \( -n "$maxy" \) ]; then
@@ -30,7 +29,10 @@ else
   echo "unable to find defined bbox variables minx=\"xxx\" miny=\"xxx\" maxx=\"xxx\" maxy=\"xxx\" using defaults ($bbox)"
 fi
 
-url=http://localhost:8080/geoserver/wms
+if [ -z "$url" ]; then
+  url=http://localhost:8080/geoserver/wms
+  echo "unable to find defined URL variable url=\"http://localhost:8080/geoserver/wms\" using default ($url)"
+fi
 
 ## Request (WMS -> MBTiles)
 
@@ -40,43 +42,57 @@ MIN_ZOOM=14
 TIMEOUT=36000
 TILESET_NAME=$out
 
-curl "$url?service=WMS&version=1.1.0&request=GetMap&tiled=true&layers=$layername&bbox=$bbox&width=768&height=451&srs=$srs&format=mbtiles&transparency=true&bgColor=0xFFFFFF&format_options=max_zoom:$MAX_ZOOM;min_zoom:$MIN_ZOOM;tileset_name:$TILESET_NAME;" --max-time $TIMEOUT -o $out.mbtiles
+echo "<GDAL_WMS>
+ <Service name=\"WMS\">
+ <Version>1.1.1</Version>
+ <ServerUrl>$url</ServerUrl>
+ <SRS>$srs</SRS>
+ <ImageFormat>image/png</ImageFormat>
+ <Layers>$layername</Layers>
+ <Styles></Styles>
+ </Service>
+ <DataWindow>
+ <UpperLeftX>$minx</UpperLeftX>
+ <UpperLeftY>$maxy</UpperLeftY>
+ <LowerRightX>$maxx</LowerRightX>
+ <LowerRightY>$miny</LowerRightY>
+ <SizeX>20000</SizeX>
+ <SizeY>20000</SizeY>
+ </DataWindow>
+ <Timeout>$TIMEOUT</Timeout>
+ <MaxConnections>10</MaxConnections>
+ <Projection>$srs</Projection>
+</GDAL_WMS>" > $out.xml
+
+gdal_translate $out.xml $out.tif
+
+gdaladdo -r cubic --config COMPRESS_OVERVIEW PNG --config INTERLEAVE_OVERVIEW PIXEL --config BIGTIFF_OVERVIEW IF_NEEDED $out.tif 2 4 8 16
+
+#curl "$url?service=WMS&version=1.1.0&request=GetMap&tiled=true&layers=$layername&bbox=$bbox&width=768&height=451&srs=$srs&format=mbtiles&transparency=true&bgColor=0xFFFFFF&format_options=max_zoom:$MAX_ZOOM;min_zoom:$MIN_ZOOM;tileset_name:$TILESET_NAME;" --max-time $TIMEOUT -o $out.mbtiles
 
 if [ $? -eq 0 ]; then
-  # sometimes geoserver returns 200 but the content is still wrong
-  if [ -f wms ]; then
-    cat wms;
-    rm wms;
-    exit 1
-  elif [ -n "`file $out.mbtiles | grep SQLite`" ]; then
       # all checks passed!
-      echo "$out.mbtiles fetched!"
-  else
-    # ! mbtiles format file recognized
-    cat $out.mbtiles;
-    rm $out.mbtiles;
-    exit 1
-  fi 
+      echo "$out.tif fetched!"
 else
-  echo "Failed to fetch $out.mbtiles"
+  echo "Failed to fetch $out.tif"
   exit 1
 fi
 
 #Process (MBTiles RGB -> GeoTIFF grayscale with noData)
 in=$out
-out=$out
+out=$out"_gray"
 
 # NODATA_VALUE is floor((255+255+255)/3) 
 NODATA_VALUE=84
 
 #TODO: BETTER CALC
 
-gdal_calc.py -R $in.mbtiles --R_band=1 -G $in.mbtiles --G_band=2 -B $in.mbtiles --B_band=3 -A $in.mbtiles --A_band=4 --overwrite --calc="(R+G+B)/3" --NoDataValue=$NODATA_VALUE --outfile="$out.tiff"
+gdal_calc.py -R $in.tif --R_band=1 -G $in.tif --G_band=2 -B $in.tif --B_band=3 -A $in.tif --overwrite --calc="(R+G+B)/3" --NoDataValue=$NODATA_VALUE --outfile="$out.tif"
 
 if [ $? -eq 0 ]; then
-  echo "Succesfully generated $out.tiff"
+  echo "Succesfully generated $out.tif"
 else
-  echo "Unable to generate $out.tiff"
+  echo "Unable to generate $out.tif"
   exit 1
 fi
 
@@ -84,7 +100,7 @@ fi
 
 in=$out
 
-gdal_polygonize.py $in.tiff -b 1 -f "ESRI Shapefile" $out.shp
+gdal_polygonize.py $in.tif -b 1 -f "ESRI Shapefile" $out.shp
 
 if [ $? -eq 0 ]; then
   echo "Succesfully generated $out.shp"
@@ -95,7 +111,7 @@ fi
 
 ## Simplify (SHP -> SHP)
 in=$out
-m=6
+m=1
 out=$in"_simplified_"$m
 ogr2ogr -f 'ESRI Shapefile' -simplify $m $out.shp $in.shp
 
