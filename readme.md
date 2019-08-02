@@ -1,3 +1,9 @@
+
+Example:
+
+./run.sh "http://map.sitr.regione.sicilia.it/ArcGIS/services/BCC_PIANI_PAESAGGISTICI/AG_beni_paesaggistici_rettifica_2019/MapServer/WMSServer?version=1.3.0&request=GetCapabilities" "EPSG:4326"
+
+
 looking at here:
 http://map.sitr.regione.sicilia.it/ArcGIS/services/BCC_PIANI_PAESAGGISTICI/AG_beni_paesaggistici_rettifica_2019/MapServer/WMSServer?version=1.3.0&request=GetCapabilities
 
