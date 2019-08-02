@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Powered by SIGEO
+# Author: carlo cancellieri
+
 ##set -x
 
 if [ $1 == "-h" ]; then
@@ -23,7 +26,8 @@ else
 fi
 
 if [ \( -n "$minx" \) -a \( -n "$miny" \) -a \( -n "$maxx" \) -a \( -n "$maxy" \) ]; then
-  bbox="$minx$_comma$miny$_comma$maxx$_comma$maxy"
+#  bbox="$minx$_comma$miny$_comma$maxx$_comma$maxy"
+  echo "BBOX: $minx$_comma$miny$_comma$maxx$_comma$maxy"
 else
   bbox="-180"$_comma"-90"$_comma"180"$_comma"90"
   echo "unable to find defined bbox variables minx=\"xxx\" miny=\"xxx\" maxx=\"xxx\" maxy=\"xxx\" using defaults ($bbox)"
@@ -83,7 +87,7 @@ if [ $? -eq 0 ]; then
       # all checks passed!
       echo "$out.tif added overviews."
 else
-  echo "Failed to fetch $out.tif"
+  echo "Failed to process $out.tif"
   exit 1
 fi
 
@@ -108,9 +112,11 @@ fi
 
 ## Polygonize (GeoTIFF -> SHP)
 
-#in=$out
+_in=$in
+in=$out
+out=$_in
 
-gdal_polygonize.py $out.tif -b 1 -f "ESRI Shapefile" $in.shp
+gdal_polygonize.py $in.tif -b 1 -f "ESRI Shapefile" $out.shp
 
 if [ $? -eq 0 ]; then
   echo "Succesfully generated $out.shp"
@@ -133,3 +139,4 @@ fi
 #  exit 1
 #fi
 
+exit 0

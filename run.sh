@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Founded by SIGEO 
+# Author: carlo cancellieri
+
 if [ $1 == "-h" ]; then
   echo $0 GET_CAPABILITIES_URL CRS
   exit 0
