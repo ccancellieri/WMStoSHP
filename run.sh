@@ -1,12 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 
 # Founded by SIGEO 
 # Author: carlo cancellieri
 
-if [ $1 == "-h" ]; then
+if [ "$1" == "-h" ]; then
   echo $0 GET_CAPABILITIES_URL CRS
   exit 0
-elif [ $# -lt 2 ]; then
+elif [ "$#" -lt 2 ]; then
   echo "Missing params (use -h)"
   exit -1
 fi

@@ -1,14 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
 # Powered by SIGEO
 # Author: carlo cancellieri
 
 ##set -x
 
-if [ $1 == "-h" ]; then
+if [ "$1" == "-h" ]; then
   echo $0 LAYERNAME OUTPUT_FILE_NAME
   exit 0
-elif [ $# -lt 2 ]; then
+elif [ "$#" -lt 2 ]; then
   echo "Missing params (use -h)"
   exit -1
 fi
@@ -45,6 +45,8 @@ MIN_ZOOM=14
 #NEEDS about 35 min
 TIMEOUT=36000
 TILESET_NAME=$out
+SIZE_X=35000
+SIZE_Y=20000
 
 echo "<GDAL_WMS>
  <Service name=\"WMS\">
@@ -60,8 +62,12 @@ echo "<GDAL_WMS>
  <UpperLeftY>$maxy</UpperLeftY>
  <LowerRightX>$maxx</LowerRightX>
  <LowerRightY>$miny</LowerRightY>
- <SizeX>20000</SizeX>
- <SizeY>20000</SizeY>
+ <DataValues NoData=\"255 255 255\" min=\"0 0 0\" max=\"254 254 254\" />
+ <MaxConnections>10</MaxConnections>
+ <Timeout>$TIMEOUT</Timeout>
+ <SizeX>$SIZE_X</SizeX>
+ <SizeY>$SIZE_Y</SizeY>
+ <OverviewCount>10</OverviewCount>
  </DataWindow>
  <Timeout>$TIMEOUT</Timeout>
  <MaxConnections>10</MaxConnections>
