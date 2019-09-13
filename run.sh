@@ -23,7 +23,8 @@ else
   exit 1
 fi
 
-sed '1d' WMSServer_orig.xml | sed -e "2 s/xmlns=".*"//g" | sed -e "s/xlink\://g" > WMSServer.xml
+# sed '1d' WMSServer_orig.xml | sed -e "2 s/xmlns=".*"//g" | sed -e "s/xlink\://g" > WMSServer.xml
+sed -e "s/xmlns=\".*\"//g"  WMSServer_orig.xml | sed -e "s/xlink\://g" > WMSServer.xml
 
 if [ $? -eq 0 ]; then
   # all checks passed!
@@ -33,7 +34,8 @@ else
   exit 1
 fi
 
-url=`xmllint --format --xpath 'string(//WMS_Capabilities/Service/OnlineResource/@href)' WMSServer.xml`
+# url=`xmllint --format --xpath 'string(//WMS_Capabilities/Service/OnlineResource/@href)' WMSServer.xml`
+url=`xmllint --format --xpath 'string(//WMS_Capabilities/Capability/Request/GetCapabilities/DCPType/HTTP/Get/OnlineResource/@href)' WMSServer.xml`
 
 echo "Base url: $url"
 
@@ -41,7 +43,6 @@ layerSize=`xmllint --format --xpath 'count(//WMS_Capabilities/Capability/Layer/L
 
 echo "Number of layers: $layerSize"
 
-i=1;
 for (( i=1; i<=$layerSize; i++ )); do
   layer_title=`xmllint --format --xpath 'string(//WMS_Capabilities/Capability/Layer/Layer['$i']/Title)' WMSServer.xml`
   layer_name=`xmllint --format --xpath 'string(//WMS_Capabilities/Capability/Layer/Layer['$i']/Name)' WMSServer.xml`
@@ -49,7 +50,7 @@ for (( i=1; i<=$layerSize; i++ )); do
   cmd=$(xmllint --format --xpath '//WMS_Capabilities/Capability/Layer/Layer['$i']/BoundingBox[@CRS="'$CRS'"]/@*' WMSServer.xml)
   #cmd=$(xmllint --format --xpath '//WMS_Capabilities/Capability/Layer/Layer['$i']/BoundingBox[1]/@*' WMSServer.xml)
   if [ -n "$cmd" ]; then
-    cmd="$cmd url=$url ./WMStoSHP.sh '$layer_name' ${layer_title// /_}"
+    cmd="$cmd url=\"$url\" ./WMStoSHP.sh '$layer_name' ${layer_title// /_}"
     echo "Executing: $cmd"
     eval $cmd
   else
