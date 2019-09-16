@@ -50,7 +50,7 @@ for (( i=1; i<=$layerSize; i++ )); do
   cmd=$(xmllint --format --xpath '//WMS_Capabilities/Capability/Layer/Layer['$i']/BoundingBox[@CRS="'$CRS'"]/@*' WMSServer.xml)
   #cmd=$(xmllint --format --xpath '//WMS_Capabilities/Capability/Layer/Layer['$i']/BoundingBox[1]/@*' WMSServer.xml)
   if [ -n "$cmd" ]; then
-    cmd="$cmd url=\"$url\" ./WMStoSHP.sh '$layer_name' ${layer_title// /_}"
+    cmd="$cmd url=\"$url\" ./WMStoSHP.sh '$layer_name' ${layer_title//[\/, ]/_}"
     echo "Executing: $cmd"
     eval $cmd
   else
